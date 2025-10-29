@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://buildwise-systems-backend.onrender.com";
+const API_URL = process.env.REACT_APP_API_URL;
 
 export const loginUser = async (username, password) => {
   try {
