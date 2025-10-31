@@ -4,13 +4,31 @@ import { getAuthHeader } from "./authService";
 
 const API_URL = "/api";
 
+// Fetch all projects
+export const getProjects = async () => {
+  const response = await axios.get(`${API_URL}/projects`, { withCredentials: true });
+  return response.data;
+};
+
+// Fetch all files
+export const getFiles = async () => {
+  const response = await axios.get(`${API_URL}/files`, { withCredentials: true });
+  return response.data;
+};
+
+// Fetch all rules
+export const getRules = async () => {
+  const response = await axios.get(`${API_URL}/rules`, { withCredentials: true });
+  return response.data;
+};
+
 export async function fetchDashboardStats() {
   const headers = getAuthHeader();
 
   const [projectsRes, filesRes, rulesRes] = await Promise.all([
-    axios.get(`${API_URL}/projects`, { headers }),
-    axios.get(`${API_URL}/files`, { headers }),
-    axios.get(`${API_URL}/rules`, { headers }),
+    axios.get(`${API_URL}/projects`, { headers, withCredentials: true }),
+    axios.get(`${API_URL}/files`, { headers, withCredentials: true }),
+    axios.get(`${API_URL}/rules`, { headers, withCredentials: true }),
   ]);
 
   const projectsCount = Array.isArray(projectsRes.data)
