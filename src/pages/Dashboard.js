@@ -3,6 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { fetchDashboardStats } from "../services/dashboardService";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
+// Simple count-up animation
+const animateValue = (start, end, duration, setValue) => {
+  if (start === end) return;
+  const range = end - start;
+  let startTime = null;
+
+  const step = (timestamp) => {
+    if (!startTime) startTime = timestamp;
+    const progress = Math.min((timestamp - startTime) / duration, 1);
+    const current = Math.floor(start + range * progress);
+    setValue(current);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+
+  requestAnimationFrame(step);
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const role = localStorage.getItem("role");
@@ -25,18 +42,29 @@ if (role === "admin") {
     rulesCount: 0,
   });
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
+useEffect(() => {
   const loadStats = async () => {
     try {
       const data = await fetchDashboardStats();
-      setStats(data);
+
+      // Animate each counter smoothly over 1 second
+      animateValue(stats.projectsCount, data.projectsCount, 1000, (v) =>
+        setStats((s) => ({ ...s, projectsCount: v }))
+      );
+      animateValue(stats.filesCount, data.filesCount, 1000, (v) =>
+        setStats((s) => ({ ...s, filesCount: v }))
+      );
+      animateValue(stats.rulesCount, data.rulesCount, 1000, (v) =>
+        setStats((s) => ({ ...s, rulesCount: v }))
+      );
     } catch (error) {
       console.error("Error loading stats:", error);
     }
   };
+
+  loadStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
