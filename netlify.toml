@@ -26,3 +26,12 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+  # ========================================
+# Auto-refresh: force browsers to use new build
+# ========================================
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+

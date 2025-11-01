@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchDashboardStats } from "../services/dashboardService";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -102,6 +103,38 @@ if (role === "admin") {
   )}
 </div>
 
+{/* ===== Chart Section ===== */}
+<div
+  style={{
+    marginTop: "60px",
+    width: "100%",
+    maxWidth: "600px",
+    marginLeft: "auto",
+    marginRight: "auto",
+    background: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+  }}
+>
+  <h3 style={{ marginBottom: 20 }}>📊 System Overview</h3>
+  <ResponsiveContainer width="100%" height={300}>
+    <BarChart
+      data={[
+        { name: "Projects", value: stats.projectsCount },
+        { name: "Files", value: stats.filesCount },
+        { name: "Rules", value: stats.rulesCount },
+      ]}
+    >
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="name" />
+      <YAxis />
+      <Tooltip />
+      <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
+
       <button
         onClick={handleLogout}
         style={{
@@ -134,3 +167,5 @@ const hoverStyle = {
   transform: "translateY(-5px)",
   boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
 };
+
+
