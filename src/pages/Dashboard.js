@@ -103,21 +103,25 @@ if (role === "admin") {
   )}
 </div>
 
-{/* ===== Chart Section ===== */}
+{/* ===== Enhanced Chart Section ===== */}
 <div
   style={{
     marginTop: "60px",
     width: "100%",
-    maxWidth: "600px",
+    maxWidth: "650px",
     marginLeft: "auto",
     marginRight: "auto",
-    background: "#fff",
-    borderRadius: 12,
-    padding: 20,
-    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+    borderRadius: 14,
+    padding: 24,
+    backgroundColor: isDark ? "#111827" : "#ffffff",
+    color: isDark ? "#e5e7eb" : "#111827",
+    boxShadow: isDark
+      ? "0 4px 16px rgba(255,255,255,0.05)"
+      : "0 4px 16px rgba(0,0,0,0.1)",
+    transition: "all 0.3s ease",
   }}
 >
-  <h3 style={{ marginBottom: 20 }}>📊 System Overview</h3>
+  <h3 style={{ marginBottom: 20, textAlign: "center" }}>📊 System Overview</h3>
   <ResponsiveContainer width="100%" height={300}>
     <BarChart
       data={[
@@ -125,12 +129,44 @@ if (role === "admin") {
         { name: "Files", value: stats.filesCount },
         { name: "Rules", value: stats.rulesCount },
       ]}
+      margin={{ top: 10, right: 20, left: 0, bottom: 20 }}
     >
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="name" />
-      <YAxis />
-      <Tooltip />
-      <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+      <defs>
+        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0%"
+            stopColor={isDark ? "#60a5fa" : "#3b82f6"}
+            stopOpacity={0.9}
+          />
+          <stop
+            offset="100%"
+            stopColor={isDark ? "#2563eb" : "#60a5fa"}
+            stopOpacity={0.7}
+          />
+        </linearGradient>
+      </defs>
+
+      <CartesianGrid
+        strokeDasharray="3 3"
+        stroke={isDark ? "#374151" : "#e5e7eb"}
+      />
+      <XAxis dataKey="name" stroke={isDark ? "#9ca3af" : "#4b5563"} />
+      <YAxis stroke={isDark ? "#9ca3af" : "#4b5563"} />
+      <Tooltip
+        contentStyle={{
+          backgroundColor: isDark ? "#1f2937" : "#f9fafb",
+          color: isDark ? "#f3f4f6" : "#111827",
+          borderRadius: 8,
+          border: "none",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+        }}
+      />
+      <Bar
+        dataKey="value"
+        fill="url(#barGradient)"
+        radius={[8, 8, 0, 0]}
+        animationDuration={1200}
+      />
     </BarChart>
   </ResponsiveContainer>
 </div>
@@ -153,19 +189,26 @@ if (role === "admin") {
   );
 }
 
+const isDark = document.body.classList.contains("dark");
+
 const cardStyle = {
-  background: "#f0f0f0",
-  borderRadius: 10,
-  padding: "20px 30px",
-  width: 150,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+  background: isDark ? "#1f2937" : "#f9fafb", // dark gray vs light gray
+  color: isDark ? "#f9fafb" : "#111827", // readable contrast
+  borderRadius: 12,
+  padding: "24px 32px",
+  width: 160,
+  boxShadow: isDark
+    ? "0 2px 6px rgba(255,255,255,0.1)"
+    : "0 2px 8px rgba(0,0,0,0.1)",
   cursor: "pointer",
-  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+  transition: "all 0.3s ease",
 };
 
 const hoverStyle = {
   transform: "translateY(-5px)",
-  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+  boxShadow: isDark
+    ? "0 4px 12px rgba(255,255,255,0.15)"
+    : "0 4px 12px rgba(0,0,0,0.2)",
 };
 
 
