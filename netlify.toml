@@ -18,3 +18,11 @@
   to = "https://buildwise-systems-backend.onrender.com/:splat"
   status = 200
   force = true
+
+# ========================================
+# SPA fallback: redirect all non-API routes to React app
+# ========================================
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
