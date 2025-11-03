@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchDashboardStats } from "../services/dashboardService";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, Legend } from "recharts";
 
 // Simple count-up animation
 const animateValue = (start, end, duration, setValue) => {
@@ -196,6 +197,53 @@ useEffect(() => {
         animationDuration={1200}
       />
     </BarChart>
+  </ResponsiveContainer>
+</div>
+
+{/* ===== Pie Chart Section ===== */}
+<div
+  style={{
+    marginTop: "60px",
+    width: "100%",
+    maxWidth: "500px",
+    marginLeft: "auto",
+    marginRight: "auto",
+    borderRadius: 14,
+    padding: 24,
+    backgroundColor: isDark ? "#111827" : "#ffffff",
+    color: isDark ? "#e5e7eb" : "#111827",
+    boxShadow: isDark
+      ? "0 4px 16px rgba(255,255,255,0.05)"
+      : "0 4px 16px rgba(0,0,0,0.1)",
+    transition: "all 0.3s ease",
+  }}
+>
+  <h3 style={{ marginBottom: 20, textAlign: "center" }}>📂 Data Composition</h3>
+  <ResponsiveContainer width="100%" height={300}>
+    <PieChart>
+      <Pie
+        data={[
+          { name: "Projects", value: stats.projectsCount },
+          { name: "Files", value: stats.filesCount },
+          { name: "Rules", value: stats.rulesCount },
+        ]}
+        dataKey="value"
+        nameKey="name"
+        cx="50%"
+        cy="50%"
+        outerRadius={100}
+        label
+      >
+        <Cell fill={isDark ? "#60a5fa" : "#3b82f6"} />
+        <Cell fill={isDark ? "#34d399" : "#10b981"} />
+        <Cell fill={isDark ? "#fbbf24" : "#f59e0b"} />
+      </Pie>
+      <Legend
+        wrapperStyle={{
+          color: isDark ? "#e5e7eb" : "#111827",
+        }}
+      />
+    </PieChart>
   </ResponsiveContainer>
 </div>
 
