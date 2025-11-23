@@ -1,92 +1,74 @@
 import React, { useEffect, useState } from "react";
-import { fetchRules, createRule, deleteRule } from "../services/rulesService";
-import { toast } from "react-toastify";
+import axios from "axios";
+import { getAuthHeader } from "../services/authService";
 
 export default function RulesPage() {
-  const [rules, setRules] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [rules, setRules] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  const API_URL = "/api";
 
   useEffect(() => {
     loadRules();
   }, []);
 
   const loadRules = async () => {
-    const data = await fetchRules();
-    setRules(data);
+    try {
+      const headers = getAuthHeader();
+      const res = await axios.get(`${API_URL}/compliance/rules`, { headers });
+
+      // The backend returns grouped rules: { Accessibility: [...], Egress: [...], ... }
+      setRules(res.data);
+    } catch (err) {
+      console.error(err);
+      setRules({});
+    }
+    setLoading(false);
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-try {
-  await createRule(title, description);
-  toast.success("✅ Rule created!");
-  setTitle("");
-  setDescription("");
-  await loadRules();
-} catch (err) {
-  toast.error("❌ Failed to create rule");
-}
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this rule?")) return;
-try {
-  await deleteRule(id);
-  toast.info("🗑️ Rule deleted");
-  await loadRules();
-} catch (err) {
-  toast.error("❌ Failed to delete rule");
-}
-  };
+  if (loading) {
+    return <h2 style={{ textAlign: "center", marginTop: 40 }}>Loading rules…</h2>;
+  }
 
   return (
-    <div style={{ textAlign: "center", marginTop: 50 }}>
-      <h1>⚖️ Rules Management</h1>
+    <div style={{ maxWidth: 800, margin: "40px auto" }}>
+      <h1 style={{ textAlign: "center" }}>📘 Compliance Rules</h1>
 
-      <form onSubmit={handleCreate} style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          value={title}
-          placeholder="Rule title"
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          style={{ padding: 8, marginRight: 8 }}
-        />
-        <input
-          type="text"
-          value={description}
-          placeholder="Description"
-          onChange={(e) => setDescription(e.target.value)}
-          style={{ padding: 8, marginRight: 8 }}
-        />
-        <button type="submit" style={{ padding: 8 }}>Add Rule</button>
-      </form>
-
-      {rules.length === 0 ? (
-        <p>No rules yet</p>
+      {Object.keys(rules).length === 0 ? (
+        <p>No rules loaded.</p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {rules.map((r) => (
-            <li key={r.id} style={{ marginBottom: 8 }}>
-              <strong>{r.title}</strong> — {r.description}
-              <button
-                onClick={() => handleDelete(r.id)}
+        Object.keys(rules).map((category) => (
+          <div key={category} style={{ marginBottom: 30 }}>
+            <h2 style={{ borderBottom: "2px solid #ddd", paddingBottom: 6 }}>
+              {category}
+            </h2>
+
+            {rules[category].map((rule) => (
+              <div
+                key={rule.rule_id}
                 style={{
-                  marginLeft: 10,
-                  color: "white",
-                  background: "red",
-                  border: "none",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  padding: "2px 8px",
+                  padding: 10,
+                  marginBottom: 10,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
                 }}
               >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+                <strong>{rule.title}</strong>
+                <p style={{ margin: "6px 0" }}>
+                  <strong>ID:</strong> {rule.rule_id}
+                </p>
+                <p style={{ margin: "6px 0" }}>
+                  <strong>Section:</strong> {rule.section}
+                </p>
+                <p style={{ margin: "6px 0" }}>
+                  <strong>Category:</strong> {rule.category}
+                  {" / "}
+                  {rule.subcategory}
+                </p>
+              </div>
+            ))}
+          </div>
+        ))
       )}
     </div>
   );

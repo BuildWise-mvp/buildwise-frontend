@@ -3,10 +3,13 @@ import { getAuthHeader } from "./authService";
 
 const API_URL = "/api";
 
+// Fetch ALL AI Rule Files (NBC + CCQ)
 export async function fetchRules() {
   const headers = getAuthHeader();
-  const res = await axios.get(`${API_URL}/rules`, { headers });
-  return Array.isArray(res.data) ? res.data : res.data.rules || [];
+  const res = await axios.get(`${API_URL}/compliance/rules`, { headers });
+
+  // backend returns: { rules: [...] }
+  return res.data.rules || [];
 }
 
 export async function createRule(title, description) {
