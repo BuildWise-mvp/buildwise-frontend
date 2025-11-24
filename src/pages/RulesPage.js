@@ -1,12 +1,11 @@
+// src/pages/RulesPage.js
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { getAuthHeader } from "../services/authService";
+import { fetchRules } from "../services/rulesService";
+import { toast } from "react-toastify";
 
 export default function RulesPage() {
-  const [rules, setRules] = useState({});
+  const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const API_URL = "/api";
 
   useEffect(() => {
     loadRules();
@@ -14,61 +13,118 @@ export default function RulesPage() {
 
   const loadRules = async () => {
     try {
-      const headers = getAuthHeader();
-      const res = await axios.get(`${API_URL}/compliance/rules`, { headers });
+      setLoading(true);
+      const data = await fetchRules();
 
-      // The backend returns grouped rules: { Accessibility: [...], Egress: [...], ... }
-      setRules(res.data);
+      // Sort a bit for nicer viewing: by jurisdiction, code, category, rule_id
+      const sorted = [...data].sort((a, b) => {
+        const jA = (a.jurisdiction || "").localeCompare(b.jurisdiction || "");
+        if (jA !== 0) return jA;
+        const cA = (a.code || "").localeCompare(b.code || "");
+        if (cA !== 0) return cA;
+        const catA = (a.category || "").localeCompare(b.category || "");
+        if (catA !== 0) return catA;
+        return (a.rule_id || "").localeCompare(b.rule_id || "");
+      });
+
+      setRules(sorted);
     } catch (err) {
       console.error(err);
-      setRules({});
+      toast.error("❌ Failed to load AI rules");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  if (loading) {
-    return <h2 style={{ textAlign: "center", marginTop: 40 }}>Loading rules…</h2>;
-  }
-
   return (
-    <div style={{ maxWidth: 800, margin: "40px auto" }}>
-      <h1 style={{ textAlign: "center" }}>📘 Compliance Rules</h1>
+    <div style={{ padding: "2rem" }}>
+      <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        🧠 AI Rule Library (NBC + CCQ)
+      </h1>
 
-      {Object.keys(rules).length === 0 ? (
-        <p>No rules loaded.</p>
+      <p style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        This view shows all structured AI rules loaded from your JSON datasets
+        (NBC &amp; CCQ). Rules are <strong>read-only</strong> here.
+      </p>
+
+      {loading ? (
+        <p style={{ textAlign: "center" }}>Loading rules…</p>
+      ) : rules.length === 0 ? (
+        <p style={{ textAlign: "center" }}>No AI rules found.</p>
       ) : (
-        Object.keys(rules).map((category) => (
-          <div key={category} style={{ marginBottom: 30 }}>
-            <h2 style={{ borderBottom: "2px solid #ddd", paddingBottom: 6 }}>
-              {category}
-            </h2>
-
-            {rules[category].map((rule) => (
-              <div
-                key={rule.rule_id}
-                style={{
-                  padding: 10,
-                  marginBottom: 10,
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                }}
-              >
-                <strong>{rule.title}</strong>
-                <p style={{ margin: "6px 0" }}>
-                  <strong>ID:</strong> {rule.rule_id}
-                </p>
-                <p style={{ margin: "6px 0" }}>
-                  <strong>Section:</strong> {rule.section}
-                </p>
-                <p style={{ margin: "6px 0" }}>
-                  <strong>Category:</strong> {rule.category}
-                  {" / "}
-                  {rule.subcategory}
-                </p>
+        <div
+          style={{
+            maxWidth: "1100px",
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+          }}
+        >
+          {rules.map((rule) => (
+            <div
+              key={rule.rule_id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                padding: "0.75rem 1rem",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              }}
+            >
+              <div style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+                {rule.jurisdiction || "—"}{" "}
+                {rule.province ? `• ${rule.province}` : ""}{" "}
+                {rule.code ? `• ${rule.code}` : ""}
               </div>
-            ))}
-          </div>
-        ))
+
+              <h3 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1rem" }}>
+                {rule.title || rule.rule_id}
+              </h3>
+
+              <div style={{ fontSize: "0.85rem", marginBottom: "0.25rem" }}>
+                <strong>ID:</strong> {rule.rule_id}
+              </div>
+
+              {rule.category && (
+                <div style={{ fontSize: "0.8rem", marginBottom: "0.25rem" }}>
+                  <strong>Category:</strong> {rule.category}
+                  {rule.subcategory ? ` → ${rule.subcategory}` : ""}
+                </div>
+              )}
+
+              {rule.section && (
+                <div style={{ fontSize: "0.8rem", marginBottom: "0.25rem" }}>
+                  <strong>Code Section:</strong> {rule.section}
+                </div>
+              )}
+
+              {rule.version && (
+                <div style={{ fontSize: "0.8rem", marginBottom: "0.25rem" }}>
+                  <strong>Version:</strong> {rule.version}
+                </div>
+              )}
+
+              {rule.parameters && (
+                <details style={{ marginTop: "0.25rem" }}>
+                  <summary style={{ cursor: "pointer", fontSize: "0.8rem" }}>
+                    Parameters
+                  </summary>
+                  <pre
+                    style={{
+                      fontSize: "0.75rem",
+                      background: "#f7f7f7",
+                      padding: "0.5rem",
+                      borderRadius: "4px",
+                      overflowX: "auto",
+                    }}
+                  >
+                    {JSON.stringify(rule.parameters, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
