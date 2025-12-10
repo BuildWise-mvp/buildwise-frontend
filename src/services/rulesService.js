@@ -3,7 +3,7 @@ import axios from "axios";
 import { getAuthHeader } from "./authService";
 
 // Keep this — Netlify proxy usually forwards "/api" to your backend
-const API_URL = "/api";
+const API_URL = "https://buildwise-systems-backend.onrender.com";
 
 /**
  * Fetch AI rules from the compliance engine (NBC + CCQ).

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://buildwise-systems-backend.onrender.com"; // <-- hard-wired
+const API_URL = "https://buildwise-systems-backend.onrender.com";
 
 export const loginUser = async (username, password) => {
   try {
