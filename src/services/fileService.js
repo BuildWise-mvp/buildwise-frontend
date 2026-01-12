@@ -4,7 +4,6 @@ import { getAuthHeader } from "./authService";
 
 const API_URL = "https://buildwise-systems-backend.onrender.com";
 
-
 export async function fetchFiles() {
   const headers = getAuthHeader();
   const res = await axios.get(`${API_URL}/files`, { headers });

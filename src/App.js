@@ -12,6 +12,7 @@ import RulesPage from "./pages/RulesPage";
 import { useContext } from "react";
 import { ThemeContext } from "./context/ThemeContext";
 import { ToastContainer } from "react-toastify";
+import ComplianceCheckPage from "./pages/ComplianceCheckPage";
 
 export default function App() {
   const { darkMode, toggleTheme } = useContext(ThemeContext);
@@ -31,6 +32,8 @@ export default function App() {
   <Link to="/projects" style={{ marginRight: 12 }}>Projects</Link>
   <Link to="/files" style={{ marginRight: 12 }}>Files</Link>
   <Link to="/rules" style={{ marginRight: 12 }}>Rules</Link>
+  <Link to="/compliance-check" style={{ marginRight: 12 }}>ComplianceCheck</Link>
+  
   <button
     onClick={toggleTheme}
     style={{
@@ -50,6 +53,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/compliance-check" element={<ComplianceCheckPage />} />
 
         <Route
           path="/dashboard"
