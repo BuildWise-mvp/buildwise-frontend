@@ -9,6 +9,8 @@ import { apiFetch } from "../api/client";
  * ✅ Guarantees CCQ key: handrail_heights_mm always exists and is LIST
  * ✅ Derives door_clear_width_min_mm for numeric comparisons
  * ✅ Error shown as real string (no [object Object])
+ * ✅ UI: shows Errors list + details
+ * ✅ UI: clicking a violation shows Violation Details
  */
 
 const initialFacts = {
@@ -72,11 +74,10 @@ const initialFacts = {
   stair_fire_rating_min: 45,
   stair_guard_height_mm: 1070,
 
-  // IMPORTANT:
-  // NBC rules sometimes expect NUMBER for handrail_height_mm
+  // NBC expects NUMBER
   handrail_height_mm: 900,
 
-  // CCQ rules expect LIST
+  // CCQ expects LIST
   handrail_heights_mm: [900],
 
   handrail_extension_mm: 300,
@@ -432,7 +433,6 @@ function BoolSelect({ value, onChange }) {
   );
 }
 
-/** Comma-separated string -> number array */
 function parseNumberList(str) {
   return str
     .split(",")
@@ -454,7 +454,6 @@ function toErrorString(e) {
   if (typeof e === "string") return e;
   if (e instanceof Error) return e.message || String(e);
 
-  // common “fetch wrappers” patterns
   if (e.detail) return typeof e.detail === "string" ? e.detail : JSON.stringify(e.detail);
   if (e.message) return typeof e.message === "string" ? e.message : JSON.stringify(e.message);
   if (e.response) return JSON.stringify(e.response);
@@ -479,12 +478,7 @@ export default function ComplianceCheckPage() {
   const updateFact = (key, value) => {
     setFacts((prev) => {
       const next = { ...prev, [key]: value };
-
-      // Keep CCQ list synced whenever numeric handrail height changes
-      if (key === "handrail_height_mm") {
-        next.handrail_heights_mm = [value];
-      }
-
+      if (key === "handrail_height_mm") next.handrail_heights_mm = [value];
       return next;
     });
   };
@@ -498,11 +492,7 @@ export default function ComplianceCheckPage() {
     try {
       const payload = {
         ...facts,
-
-        // numeric helper for rules that compare >= int
         door_clear_width_min_mm: safeMin(facts.door_clear_width_mm, null),
-
-        // guarantee CCQ key exists and is list
         handrail_heights_mm:
           facts.handrail_heights_mm ??
           (Array.isArray(facts.handrail_height_mm)
@@ -510,11 +500,6 @@ export default function ComplianceCheckPage() {
             : [facts.handrail_height_mm]),
       };
 
-      console.log("PAYLOAD TO /compliance/check:", payload);
-
-      // IMPORTANT:
-      // Most apiFetch wrappers do JSON.stringify and Content-Type internally.
-      // So we send body as OBJECT here.
       const data = await apiFetch("/compliance/check", {
         method: "POST",
         body: payload,
@@ -522,7 +507,6 @@ export default function ComplianceCheckPage() {
 
       setReport(data);
     } catch (e) {
-      console.log("COMPLIANCE ERROR (raw):", e);
       setError(toErrorString(e));
       setReport(null);
     } finally {
@@ -532,12 +516,10 @@ export default function ComplianceCheckPage() {
 
   const counts = report?.counts;
 
-  // -----------------------------
-  // 🔴 COLLECT ALL ERRORS (RULE + VIOLATION)
-  // -----------------------------
-
+  // Collect errors from BOTH:
+  // 1) report.errors (status ERROR rules)
+  // 2) non_critical_violations with severity ERROR (your strict mode missing vars)
   const ruleErrors = Array.isArray(report?.errors) ? report.errors : [];
-
   const errorViolations = Array.isArray(report?.non_critical_violations)
     ? report.non_critical_violations.filter(
         (v) => String(v?.severity || "").toUpperCase() === "ERROR"
@@ -561,7 +543,7 @@ export default function ComplianceCheckPage() {
       message: v.message,
       source: "VIOLATION_SEVERITY_ERROR",
     })),
-];
+  ];
 
   return (
     <div style={{ maxWidth: 1150, margin: "0 auto", padding: 20 }}>
@@ -766,6 +748,7 @@ export default function ComplianceCheckPage() {
             </div>
           ) : (
             <>
+              {/* Stats */}
               <div
                 style={{
                   display: "grid",
@@ -784,7 +767,88 @@ export default function ComplianceCheckPage() {
                 <Stat label="Errors" value={counts?.errors} />
               </div>
 
-              <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {/* Errors list + details */}
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                    Rule Errors ({allErrors.length})
+                  </div>
+
+                  {allErrors.length === 0 ? (
+                    <div style={{ opacity: 0.75 }}>None</div>
+                  ) : (
+                    <div style={{ maxHeight: 280, overflow: "auto" }}>
+                      {allErrors.slice(0, 50).map((e, idx) => (
+                        <button
+                          key={`${e.rule_id}-${idx}`}
+                          onClick={() => setSelectedError(e)}
+                          style={{
+                            width: "100%",
+                            textAlign: "left",
+                            border: "1px solid #2b2f36",
+                            borderRadius: 10,
+                            padding: 10,
+                            cursor: "pointer",
+                            marginBottom: 8,
+                            background: "transparent",
+                            color: "inherit",
+                          }}
+                        >
+                          <div style={{ fontWeight: 900 }}>
+                            {e.rule_id}{" "}
+                            <span style={{ opacity: 0.7 }}>
+                              ({e.kind || "ERROR"})
+                            </span>
+                          </div>
+                          <div style={{ opacity: 0.85, marginTop: 4 }}>{e.message}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Error Details</div>
+                  {!selectedError ? (
+                    <div style={{ opacity: 0.8 }}>Click an error on the left.</div>
+                  ) : (
+                    <div>
+                      <div style={{ fontWeight: 900 }}>
+                        {selectedError.rule_id} — {selectedError.title || ""}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <b>Category:</b> {selectedError.category || "—"}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <b>Kind:</b> {selectedError.kind || "—"}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <b>Source:</b> {selectedError.source || "—"}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <b>Message:</b> {selectedError.message || "—"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Violations lists */}
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
                 <ViolationList
                   title="Critical Violations"
                   items={report.critical_violations || []}
@@ -797,9 +861,65 @@ export default function ComplianceCheckPage() {
                 />
               </div>
 
+              {/* Violation details (THIS is what makes clicking work) */}
+              <div style={{ marginTop: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 8 }}>
+                  Violation Details
+                </h3>
+
+                {!selectedViolation ? (
+                  <div style={{ opacity: 0.8 }}>Click a violation to view details.</div>
+                ) : (
+                  <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
+                    <div style={{ fontWeight: 900 }}>
+                      {selectedViolation.rule_id} — {selectedViolation.title}
+                    </div>
+
+                    <div style={{ marginTop: 8 }}>
+                      <b>Category:</b> {selectedViolation.category}
+                    </div>
+
+                    <div style={{ marginTop: 8 }}>
+                      <b>Severity:</b> {selectedViolation.severity}
+                    </div>
+
+                    <div style={{ marginTop: 8 }}>
+                      <b>Message:</b> {selectedViolation.message}
+                    </div>
+
+                    {selectedViolation.check_id ? (
+                      <div style={{ marginTop: 8 }}>
+                        <b>Check ID:</b> {selectedViolation.check_id}
+                      </div>
+                    ) : null}
+
+                    {selectedViolation.label ? (
+                      <div style={{ marginTop: 8 }}>
+                        <b>Label:</b> {selectedViolation.label}
+                      </div>
+                    ) : null}
+
+                    {Array.isArray(selectedViolation.references) &&
+                    selectedViolation.references.length ? (
+                      <div style={{ marginTop: 8 }}>
+                        <b>References:</b>
+                        <ul style={{ margin: "6px 0 0 18px" }}>
+                          {selectedViolation.references.map((r, idx) => (
+                            <li key={idx}>{typeof r === "string" ? r : JSON.stringify(r)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              {/* Raw preview */}
               {showRaw ? (
                 <div style={{ marginTop: 16 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 8 }}>Raw Results (Preview)</h3>
+                  <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 8 }}>
+                    Raw Results (Preview)
+                  </h3>
                   <div
                     style={{
                       border: "1px solid #2b2f36",
