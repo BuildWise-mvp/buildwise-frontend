@@ -1,42 +1,49 @@
 // src/api/client.js
+
+function normalizeBaseUrl(base) {
+  // remove trailing spaces + ALL trailing slashes
+  return String(base || "").trim().replace(/\/+$/, "");
+}
+
+function normalizePath(path) {
+  // remove leading spaces + ALL leading slashes
+  const p = String(path || "").trim().replace(/^\/+/, "");
+  return `/${p}`;
+}
+
 const API_BASE =
-  (process.env.REACT_APP_API_BASE || "").replace(/\/$/, "") || "http://127.0.0.1:8000";
+  normalizeBaseUrl(process.env.REACT_APP_API_BASE) || "http://127.0.0.1:8000";
 
 export function getToken() {
   return localStorage.getItem("token"); // adjust if you store it differently
 }
 
-export async function apiFetch(
-  path,
-  { method = "GET", body, headers = {} } = {}
-) {
+export async function apiFetch(path, { method = "GET", body, headers = {} } = {}) {
   const token = getToken();
 
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const url = `${API_BASE}${cleanPath}`;
+  const url = `${API_BASE}${normalizePath(path)}`;
 
   const finalHeaders = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...headers,
   };
 
-  let finalBody = body;
+  // default JSON
+  let finalBody = undefined;
 
-  // If body is a plain object, stringify it and set JSON content-type
-  const isPlainObject =
-    finalBody !== null &&
-    typeof finalBody === "object" &&
-    !(finalBody instanceof FormData) &&
-    !(finalBody instanceof Blob);
-
-  if (isPlainObject) {
-    finalHeaders["Content-Type"] = finalHeaders["Content-Type"] || "application/json";
-    finalBody = JSON.stringify(finalBody);
-  } else if (typeof finalBody === "string") {
-    // If user already passed a JSON string, keep it
-    finalHeaders["Content-Type"] = finalHeaders["Content-Type"] || "application/json";
-  } else if (!finalBody) {
-    finalBody = undefined;
+  if (body !== undefined && body !== null) {
+    // allow FormData uploads if needed later
+    if (body instanceof FormData) {
+      finalBody = body;
+    } else if (typeof body === "string") {
+      finalHeaders["Content-Type"] =
+        finalHeaders["Content-Type"] || "application/json";
+      finalBody = body;
+    } else {
+      finalHeaders["Content-Type"] =
+        finalHeaders["Content-Type"] || "application/json";
+      finalBody = JSON.stringify(body);
+    }
   }
 
   const res = await fetch(url, {
@@ -54,10 +61,16 @@ export async function apiFetch(
   }
 
   if (!res.ok) {
-    const detail = data?.detail || data?.message || text || `HTTP ${res.status}`;
+    // keep the real server message if we have it
+    const detail =
+      (data && (data.detail || data.message)) ||
+      text ||
+      `HTTP ${res.status} ${res.statusText}`;
+
     const err = new Error(detail);
-    err.detail = data;
     err.status = res.status;
+    err.url = url;
+    err.payload = data;
     throw err;
   }
 
