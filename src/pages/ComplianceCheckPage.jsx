@@ -1,13 +1,14 @@
-// src/pages/ComplianceCheckPage.jsx
+// frontend/src/pages/ComplianceCheckPage.jsx
 import React, { useMemo, useState } from "react";
 import { apiFetch } from "../api/client";
 
 /**
- * Fixes:
- * ✅ Violation click now shows Violation Details
- * ✅ Errors list now displayed (not just count)
- * ✅ Error click shows Error Details
+ * BEST-OF-BOTH-WORLDS UI
+ * ✅ Violation click shows Violation Details
+ * ✅ Errors list displayed + click shows Error Details
+ * ✅ Missing Inputs list displayed (from backend missing_inputs)
  * ✅ Keeps payload helpers for CCQ/NBC list-vs-number
+ * ✅ Removes unused vars warnings
  */
 
 const initialFacts = {
@@ -65,8 +66,6 @@ const initialFacts = {
   stair_riser_mm: 180,
 
   exit_route_live_load_kpa: 4.8,
-
-  // include whatever else you want...
 };
 
 function Badge({ value }) {
@@ -127,10 +126,11 @@ function toErrorString(e) {
   }
 }
 
-function ListBox({ title, items, onSelect }) {
+function ListBox({ title, items, onSelect, subtitle }) {
   return (
     <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
-      <div style={{ fontWeight: 900, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontWeight: 900, marginBottom: 6 }}>{title}</div>
+      {subtitle ? <div style={{ opacity: 0.75, marginBottom: 10 }}>{subtitle}</div> : null}
 
       {items.length === 0 ? (
         <div style={{ opacity: 0.75 }}>None</div>
@@ -152,7 +152,7 @@ function ListBox({ title, items, onSelect }) {
               }}
             >
               <div style={{ fontWeight: 800 }}>
-                {v.rule_id}{" "}
+                {v.rule_id || "—"}{" "}
                 <span style={{ opacity: 0.7 }}>
                   ({String(v.severity || v.status || "").toUpperCase() || "—"})
                 </span>
@@ -177,6 +177,7 @@ export default function ComplianceCheckPage() {
 
   const [selectedViolation, setSelectedViolation] = useState(null);
   const [selectedError, setSelectedError] = useState(null);
+  const [selectedMissing, setSelectedMissing] = useState(null);
   const [showRaw, setShowRaw] = useState(false);
 
   const updateFact = (key, value) => {
@@ -192,6 +193,7 @@ export default function ComplianceCheckPage() {
     setError("");
     setSelectedViolation(null);
     setSelectedError(null);
+    setSelectedMissing(null);
 
     try {
       const payload = {
@@ -199,9 +201,7 @@ export default function ComplianceCheckPage() {
         door_clear_width_min_mm: safeMin(facts.door_clear_width_mm, null),
         handrail_heights_mm:
           facts.handrail_heights_mm ??
-          (Array.isArray(facts.handrail_height_mm)
-            ? facts.handrail_height_mm
-            : [facts.handrail_height_mm]),
+          (Array.isArray(facts.handrail_height_mm) ? facts.handrail_height_mm : [facts.handrail_height_mm]),
       };
 
       const data = await apiFetch("/compliance/check", {
@@ -218,16 +218,28 @@ export default function ComplianceCheckPage() {
     }
   };
 
-  const counts = report?.counts;
+  const counts = report?.counts || {};
+
+  // ✅ Missing Inputs (from backend best-of-both-worlds)
+  const missingInputsRaw = Array.isArray(report?.missing_inputs) ? report.missing_inputs : [];
+  const missingInputs = missingInputsRaw.map((m) => ({
+    rule_id: m.rule_id,
+    title: m.title,
+    category: m.category,
+    status: "NEEDS_INPUT",
+    severity: "NEEDS_INPUT",
+    message:
+      (m.missing && m.missing[0] && m.missing[0].message) ||
+      "Missing required data for this rule.",
+    missing: m.missing || [],
+  }));
 
   // Rule status errors returned by router (status == ERROR)
   const ruleErrors = Array.isArray(report?.errors) ? report.errors : [];
 
-  // Violations that have severity ERROR (you currently store these under non_critical_violations)
+  // Violations that have severity ERROR (you store these under non_critical_violations)
   const violationErrors = Array.isArray(report?.non_critical_violations)
-    ? report.non_critical_violations.filter(
-        (v) => String(v?.severity || "").toUpperCase() === "ERROR"
-      )
+    ? report.non_critical_violations.filter((v) => String(v?.severity || "").toUpperCase() === "ERROR")
     : [];
 
   const allErrors = [
@@ -259,9 +271,7 @@ export default function ComplianceCheckPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>Compliance Check</h1>
-          <div style={{ opacity: 0.75 }}>
-            MVP mode: manual facts → run compliance → review violations + errors.
-          </div>
+          <div style={{ opacity: 0.75 }}>MVP mode: manual facts → run compliance → review results.</div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <div style={{ opacity: 0.75, fontWeight: 700 }}>Result</div>
@@ -304,8 +314,7 @@ export default function ComplianceCheckPage() {
           </label>
 
           <div style={{ marginBottom: 10, fontSize: 12, opacity: 0.75 }}>
-            (Auto) Door clear width MIN used for some rules:{" "}
-            <b>{safeMin(facts.door_clear_width_mm, "—")}</b> mm
+            (Auto) Door clear width MIN used for some rules: <b>{safeMin(facts.door_clear_width_mm, "—")}</b> mm
           </div>
 
           <label style={{ display: "block", marginBottom: 10 }}>
@@ -335,9 +344,7 @@ export default function ComplianceCheckPage() {
           </button>
 
           {error ? (
-            <div style={{ marginTop: 12, color: "#ff6b6b", fontWeight: 700 }}>
-              Error: {error}
-            </div>
+            <div style={{ marginTop: 12, color: "#ff6b6b", fontWeight: 700 }}>Error: {error}</div>
           ) : null}
         </div>
 
@@ -377,14 +384,19 @@ export default function ComplianceCheckPage() {
                   marginTop: 14,
                 }}
               >
-                <Stat label="Total rules" value={counts?.total_rules} />
-                <Stat label="Applicable" value={counts?.applicable_rules} />
-                <Stat label="Critical" value={counts?.critical_violations} />
-                <Stat label="Non-critical" value={counts?.non_critical_violations} />
-                <Stat label="Compliant" value={counts?.compliant_rules} />
-                <Stat label="Non-compliant" value={counts?.non_compliant_rules} />
-                <Stat label="N/A" value={counts?.not_applicable} />
-                <Stat label="Errors" value={counts?.errors} />
+                <Stat label="Total rules" value={counts.total_rules} />
+                <Stat label="Applicable" value={counts.applicable_rules} />
+                <Stat label="Critical" value={counts.critical_violations} />
+                <Stat label="Non-critical" value={counts.non_critical_violations} />
+                <Stat label="Compliant" value={counts.compliant_rules} />
+                <Stat label="Non-compliant" value={counts.non_compliant_rules} />
+                <Stat label="N/A" value={counts.not_applicable} />
+                <Stat label="Errors" value={counts.errors} />
+
+                {/* only show if backend provides it */}
+                {typeof counts.needs_input !== "undefined" ? (
+                  <Stat label="Needs input" value={counts.needs_input} />
+                ) : null}
               </div>
 
               {/* ERRORS LIST + DETAILS */}
@@ -411,6 +423,50 @@ export default function ComplianceCheckPage() {
                       </div>
                       <div style={{ marginTop: 8 }}>
                         <b>Message:</b> {selectedError.message || "—"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ✅ MISSING INPUTS LIST + DETAILS */}
+              <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <ListBox
+                  title={`Missing Inputs (${missingInputs.length})`}
+                  items={missingInputs}
+                  onSelect={setSelectedMissing}
+                  subtitle="These are not system errors — they are facts you haven’t provided yet."
+                />
+
+                <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
+                  <div style={{ fontWeight: 900, marginBottom: 8 }}>Missing Input Details</div>
+                  {!selectedMissing ? (
+                    <div style={{ opacity: 0.8 }}>Click a missing input rule on the left.</div>
+                  ) : (
+                    <div style={{ lineHeight: 1.6 }}>
+                      <div style={{ fontWeight: 900 }}>
+                        {selectedMissing.rule_id} — {selectedMissing.title || "—"}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <b>Category:</b> {selectedMissing.category || "—"}
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <b>Message:</b> {selectedMissing.message || "—"}
+                      </div>
+
+                      <div style={{ marginTop: 10 }}>
+                        <b>Missing fields:</b>
+                        <div style={{ marginTop: 6, opacity: 0.9, fontSize: 13 }}>
+                          {(selectedMissing.missing || []).length === 0 ? (
+                            <div>—</div>
+                          ) : (
+                            (selectedMissing.missing || []).map((m, idx) => (
+                              <div key={idx} style={{ marginBottom: 6 }}>
+                                • {m.message}
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -452,7 +508,8 @@ export default function ComplianceCheckPage() {
                       <b>Message:</b> {selectedViolation.message || "—"}
                     </div>
                     <div style={{ marginTop: 8 }}>
-                      <b>Check:</b> {selectedViolation.check_id || "—"} {selectedViolation.label ? `(${selectedViolation.label})` : ""}
+                      <b>Check:</b> {selectedViolation.check_id || "—"}{" "}
+                      {selectedViolation.label ? `(${selectedViolation.label})` : ""}
                     </div>
                   </div>
                 )}
@@ -469,8 +526,7 @@ export default function ComplianceCheckPage() {
                       padding: 12,
                       maxHeight: 300,
                       overflow: "auto",
-                      fontFamily:
-                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                       fontSize: 12,
                       lineHeight: 1.45,
                       whiteSpace: "pre-wrap",
