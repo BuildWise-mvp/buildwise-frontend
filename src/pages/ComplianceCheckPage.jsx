@@ -286,7 +286,7 @@ export default function ComplianceCheckPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>
-            Compliance Check V2 LIVE TEST
+            Compliance PAGE TEST 999
           </h1>  
           <div style={{ opacity: 0.75 }}>MVP mode: manual facts → run compliance → review results.</div>
         </div>
