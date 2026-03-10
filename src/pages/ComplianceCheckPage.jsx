@@ -200,6 +200,7 @@ export default function ComplianceCheckPage() {
         occupant_load: Number(facts.occupant_load) || 0,
         calculated_occupant_load: Number(facts.occupant_load) || 0,
         actual_occupant_load: Number(facts.occupant_load) || 0,
+        universal_washroom_provided: !!facts.universal_washroom_provided,
 
         door_clear_width_mm: facts.door_clear_width_mm || [],
         door_clear_width_min_mm: safeMin(facts.door_clear_width_mm, null),
@@ -318,19 +319,18 @@ export default function ComplianceCheckPage() {
           </div>
 
           <label style={{ display: "block", marginBottom: 10 }}>
-            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Occupant Load</div>
+            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
+              Universal Washroom Provided
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input
-              type="number"
-              min="0"
-              value={facts.occupant_load}
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                updateFact("occupant_load", n);
-                updateFact("calculated_occupant_load", n);
-                updateFact("actual_occupant_load", n);
-              }}
-              style={{ width: "100%", padding: 10, borderRadius: 10 }}
+              type="checkbox"
+              checked={!!facts.universal_washroom_provided}
+              onChange={(e) => updateFact("universal_washroom_provided", e.target.checked)}
             />
+            <span>Yes</span>
+           </label>
           </label>
 
           <label style={{ display: "block", marginBottom: 10 }}>
