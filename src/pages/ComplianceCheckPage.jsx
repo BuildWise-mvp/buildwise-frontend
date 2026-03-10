@@ -3,12 +3,12 @@ import React, { useMemo, useState } from "react";
 import { apiFetch } from "../api/client";
 
 /**
- * BEST-OF-BOTH-WORLDS UI
- * ✅ Violation click shows Violation Details
- * ✅ Errors list displayed + click shows Error Details
- * ✅ Missing Inputs list displayed (from backend missing_inputs)
- * ✅ Keeps payload helpers for CCQ/NBC list-vs-number
- * ✅ Removes unused vars warnings
+ * Compliance Check UI
+ * Connected to structured backend payload:
+ * {
+ *   facts: { ... },
+ *   rule_ids: [...]
+ * }
  */
 
 const initialFacts = {
@@ -133,7 +133,7 @@ function ListBox({ title, items, onSelect, subtitle }) {
       {subtitle ? <div style={{ opacity: 0.75, marginBottom: 10 }}>{subtitle}</div> : null}
 
       {items.length === 0 ? (
-        <div style={{ opacity: 0.75 }}>None</div>
+        <div style={{ opacity: 0.75 }}>No items to show</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflow: "auto" }}>
           {items.slice(0, 50).map((v, idx) => (
@@ -196,14 +196,32 @@ export default function ComplianceCheckPage() {
     setSelectedMissing(null);
 
     try {
-      const payload = {
-        ...facts,
+      const normalizedFacts = {
+        occupant_load: Number(facts.occupant_load) || 0,
+        calculated_occupant_load: Number(facts.occupant_load) || 0,
+        actual_occupant_load: Number(facts.occupant_load) || 0,
+
+        door_clear_width_mm: facts.door_clear_width_mm || [],
         door_clear_width_min_mm: safeMin(facts.door_clear_width_mm, null),
+
+        handrail_height_mm: Number(facts.handrail_height_mm) || 0,
         handrail_heights_mm:
           facts.handrail_heights_mm ??
-          (Array.isArray(facts.handrail_height_mm) ? facts.handrail_height_mm : [facts.handrail_height_mm]),
+          (Array.isArray(facts.handrail_height_mm)
+            ? facts.handrail_height_mm
+            : [Number(facts.handrail_height_mm) || 0]),
       };
 
+      const payload = {
+        facts: normalizedFacts,
+        rule_ids: [
+          "NBC-ACC-DOOR-CLEAR-WIDTH",
+          "NBC-WSH-UNIVERSAL-REQ",
+          "NBC-EG-STAIR-HANDRAILS",
+          "CCQ-STR-HANDRAIL",
+        ],
+      };
+      console.log("COMPLIANCE V2 PAYLOAD", payload);
       const data = await apiFetch("/compliance/check", {
         method: "POST",
         body: payload,
@@ -220,7 +238,6 @@ export default function ComplianceCheckPage() {
 
   const counts = report?.counts || {};
 
-  // ✅ Missing Inputs (from backend best-of-both-worlds)
   const missingInputsRaw = Array.isArray(report?.missing_inputs) ? report.missing_inputs : [];
   const missingInputs = missingInputsRaw.map((m) => ({
     rule_id: m.rule_id,
@@ -234,10 +251,8 @@ export default function ComplianceCheckPage() {
     missing: m.missing || [],
   }));
 
-  // Rule status errors returned by router (status == ERROR)
   const ruleErrors = Array.isArray(report?.errors) ? report.errors : [];
 
-  // Violations that have severity ERROR (you store these under non_critical_violations)
   const violationErrors = Array.isArray(report?.non_critical_violations)
     ? report.non_critical_violations.filter((v) => String(v?.severity || "").toUpperCase() === "ERROR")
     : [];
@@ -270,19 +285,36 @@ export default function ComplianceCheckPage() {
     <div style={{ maxWidth: 1150, margin: "0 auto", padding: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>Compliance Check</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>
+            Compliance Check V2 LIVE TEST
+          </h1>  
           <div style={{ opacity: 0.75 }}>MVP mode: manual facts → run compliance → review results.</div>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={{ opacity: 0.75, fontWeight: 700 }}>Result</div>
-          <Badge value={report?.result} />
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <div style={{ opacity: 0.75, fontWeight: 700 }}>Result</div>
+            <Badge value={report?.result} />
+          </div>
+
+          {report ? (
+            <div style={{ fontSize: 13, opacity: 0.8, textAlign: "right", maxWidth: 340 }}>
+              {counts.non_compliant_rules > 0
+                ? `${counts.non_compliant_rules} rules failed, ${counts.compliant_rules} passed`
+                : counts.needs_input > 0
+                ? `${counts.compliant_rules} rules passed, ${counts.needs_input} need more input`
+                : `${counts.compliant_rules} rules passed`}
+            </div>
+          ) : null}
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "390px 1fr", gap: 16, marginTop: 16 }}>
-        {/* LEFT */}
         <div style={{ border: "1px solid #2b2f36", borderRadius: 14, padding: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 900, marginBottom: 10 }}>Manual Facts</h2>
+          <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 12 }}>
+            This manual test checks a limited set of rules based on the facts entered below.
+          </div>
 
           <label style={{ display: "block", marginBottom: 10 }}>
             <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Occupant Load</div>
@@ -302,7 +334,7 @@ export default function ComplianceCheckPage() {
 
           <label style={{ display: "block", marginBottom: 10 }}>
             <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
-              Door Clear Widths (mm) — comma separated
+              Door Clear Widths in mm, comma separated if multiple doors
             </div>
             <input
               type="text"
@@ -314,7 +346,8 @@ export default function ComplianceCheckPage() {
           </label>
 
           <div style={{ marginBottom: 10, fontSize: 12, opacity: 0.75 }}>
-            (Auto) Door clear width MIN used for some rules: <b>{safeMin(facts.door_clear_width_mm, "—")}</b> mm
+            BuildWise uses the smallest entered width where a minimum door width rule applies. Current minimum:{" "}
+            <b>{safeMin(facts.door_clear_width_mm, "—")}</b> mm
           </div>
 
           <label style={{ display: "block", marginBottom: 10 }}>
@@ -348,7 +381,6 @@ export default function ComplianceCheckPage() {
           ) : null}
         </div>
 
-        {/* RIGHT */}
         <div style={{ border: "1px solid #2b2f36", borderRadius: 14, padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h2 style={{ fontSize: 18, fontWeight: 900 }}>Results</h2>
@@ -358,13 +390,15 @@ export default function ComplianceCheckPage() {
                 type="button"
                 onClick={() => setShowRaw((s) => !s)}
                 style={{
-                  padding: "8px 10px",
-                  borderRadius: 10,
+                  padding: "6px 8px",
+                  borderRadius: 8,
                   border: "1px solid #2b2f36",
                   background: "transparent",
                   color: "inherit",
                   cursor: "pointer",
-                  fontWeight: 800,
+                  fontWeight: 700,
+                  fontSize: 12,
+                  opacity: 0.8,
                 }}
               >
                 {showRaw ? "Hide Raw Results" : "Show Raw Results"}
@@ -384,24 +418,24 @@ export default function ComplianceCheckPage() {
                   marginTop: 14,
                 }}
               >
-                <Stat label="Total rules" value={counts.total_rules} />
-                <Stat label="Applicable" value={counts.applicable_rules} />
-                <Stat label="Critical" value={counts.critical_violations} />
-                <Stat label="Non-critical" value={counts.non_critical_violations} />
-                <Stat label="Compliant" value={counts.compliant_rules} />
-                <Stat label="Non-compliant" value={counts.non_compliant_rules} />
-                <Stat label="N/A" value={counts.not_applicable} />
-                <Stat label="Errors" value={counts.errors} />
-
-                {/* only show if backend provides it */}
-                {typeof counts.needs_input !== "undefined" ? (
-                  <Stat label="Needs input" value={counts.needs_input} />
-                ) : null}
+                <Stat label="Total rules" value={counts.total_rules || 0} />
+                <Stat label="Applicable" value={counts.applicable_rules || 0} />
+                <Stat label="Critical" value={counts.critical_violations || 0} />
+                <Stat label="Non-critical" value={counts.non_critical_violations || 0} />
+                <Stat label="Compliant" value={counts.compliant_rules || 0} />
+                <Stat label="Non-compliant" value={counts.non_compliant_rules || 0} />
+                <Stat label="N/A" value={counts.not_applicable || 0} />
+                <Stat label="Errors" value={counts.errors || 0} />
+                <Stat label="Needs input" value={counts.needs_input || 0} />
               </div>
 
-              {/* ERRORS LIST + DETAILS */}
               <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <ListBox title={`Errors (${allErrors.length})`} items={allErrors} onSelect={setSelectedError} />
+                <ListBox
+                  title={`Errors (${allErrors.length})`}
+                  items={allErrors}
+                  onSelect={setSelectedError}
+                  subtitle="System or rule evaluation problems only"
+                />
 
                 <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
                   <div style={{ fontWeight: 900, marginBottom: 8 }}>Error Details</div>
@@ -429,13 +463,12 @@ export default function ComplianceCheckPage() {
                 </div>
               </div>
 
-              {/* ✅ MISSING INPUTS LIST + DETAILS */}
               <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <ListBox
                   title={`Missing Inputs (${missingInputs.length})`}
                   items={missingInputs}
                   onSelect={setSelectedMissing}
-                  subtitle="These are not system errors — they are facts you haven’t provided yet."
+                  subtitle="These are not system errors, they are facts you have not provided yet."
                 />
 
                 <div style={{ border: "1px solid #2b2f36", borderRadius: 12, padding: 12 }}>
@@ -473,21 +506,21 @@ export default function ComplianceCheckPage() {
                 </div>
               </div>
 
-              {/* VIOLATIONS LISTS */}
               <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <ListBox
                   title="Critical Violations"
                   items={report.critical_violations || []}
                   onSelect={setSelectedViolation}
+                  subtitle="High priority compliance failures"
                 />
                 <ListBox
-                  title="Non-Critical Violations"
+                  title="Non Critical Violations"
                   items={report.non_critical_violations || []}
                   onSelect={setSelectedViolation}
+                  subtitle="Warnings and lower priority failures"
                 />
               </div>
 
-              {/* VIOLATION DETAILS */}
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 8 }}>Violation Details</div>
 
@@ -515,7 +548,6 @@ export default function ComplianceCheckPage() {
                 )}
               </div>
 
-              {/* RAW RESULTS */}
               {showRaw ? (
                 <div style={{ marginTop: 16 }}>
                   <h3 style={{ fontSize: 16, fontWeight: 900, marginBottom: 8 }}>Raw Results (Preview)</h3>
