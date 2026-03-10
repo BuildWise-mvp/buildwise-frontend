@@ -210,6 +210,7 @@ export default function ComplianceCheckPage() {
           (Array.isArray(facts.handrail_height_mm)
             ? facts.handrail_height_mm
             : [Number(facts.handrail_height_mm) || 0]),
+        handrail_continuous: facts.handrail_continuous,
       };
 
       const payload = {
