@@ -19,6 +19,7 @@ const initialFacts = {
   actual_occupant_load: 10,
   calculated_occupant_load: 10,
   occupant_load: 10,
+  universal_washroom_provided: false,
   occupant_load_sign_present: true,
   panel_distance_from_entrance_m: 3,
 
