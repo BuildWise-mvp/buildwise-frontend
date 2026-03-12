@@ -206,6 +206,9 @@ export default function ComplianceCheckPage() {
         door_clear_width_mm: facts.door_clear_width_mm || [],
         door_clear_width_min_mm: safeMin(facts.door_clear_width_mm, null),
 
+        corridor_width_mm: facts.corridor_width_mm || [],
+        stair_landing_length_mm: Number(facts.stair_landing_length_mm) || 0,
+
         handrail_height_mm: Number(facts.handrail_height_mm) || 0,
         handrail_heights_mm:
           facts.handrail_heights_mm ??
@@ -222,6 +225,8 @@ export default function ComplianceCheckPage() {
           "NBC-WSH-UNIVERSAL-REQ",
           "NBC-EG-STAIR-HANDRAILS",
           "CCQ-STR-HANDRAIL",
+          "NBC-ACC-CORRIDOR-WIDTH",
+          "NBC-EG-STAIR-LANDING",
         ],
       };
       console.log("COMPLIANCE V2 PAYLOAD", payload);
@@ -320,6 +325,22 @@ export default function ComplianceCheckPage() {
           </div>
 
           <label style={{ display: "block", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Occupant Load</div>
+            <input
+              type="number"
+              min="0"
+              value={facts.occupant_load}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                updateFact("occupant_load", n);
+                updateFact("calculated_occupant_load", n);
+                updateFact("actual_occupant_load", n);
+              }}
+              style={{ width: "100%", padding: 10, borderRadius: 10 }}
+            />
+          </label>
+
+          <label style={{ display: "block", marginBottom: 10 }}>
             <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>
               Universal Washroom Provided
             </div>
@@ -344,6 +365,28 @@ export default function ComplianceCheckPage() {
               onChange={(e) => updateFact("door_clear_width_mm", parseNumberList(e.target.value))}
               style={{ width: "100%", padding: 10, borderRadius: 10 }}
               placeholder="900"
+            />
+          </label>
+
+          <label style={{ display: "block", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Corridor Width (mm)</div>
+            <input
+              type="number"
+              min="0"
+              value={Array.isArray(facts.corridor_width_mm) ? facts.corridor_width_mm[0] ?? "" : ""}
+              onChange={(e) => updateFact("corridor_width_mm", [Number(e.target.value) || 0])}
+              style={{ width: "100%", padding: 10, borderRadius: 10 }}
+            />
+          </label>
+
+          <label style={{ display: "block", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 6 }}>Stair Landing Length (mm)</div>
+            <input
+              type="number"
+              min="0"
+              value={facts.stair_landing_length_mm}
+              onChange={(e) => updateFact("stair_landing_length_mm", Number(e.target.value))}
+              style={{ width: "100%", padding: 10, borderRadius: 10 }}
             />
           </label>
 
