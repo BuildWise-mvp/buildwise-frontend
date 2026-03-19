@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchFiles, uploadFile, deleteFile } from "../services/fileService";
+import DxfUpload from "../components/DxfUpload";
 
 export default function FilesPage() {
   const [files, setFiles] = useState([]);
@@ -60,6 +61,8 @@ export default function FilesPage() {
         <button type="submit" style={{ padding: 8 }}>Upload</button>
       </form>
 
+      <DxfUpload />
+
       {loading ? (
         <p>Loading files...</p>
       ) : files.length === 0 ? (
@@ -70,7 +73,11 @@ export default function FilesPage() {
             <li key={f.id} style={{ marginBottom: 10 }}>
               <strong>{f.filename}</strong> ({f.project_name || "No project"})
               <div>
-                <a href={`http://127.0.0.1:8000/files/${f.id}/download`} target="_blank" rel="noreferrer">
+                <a
+                  href={`https://buildwise-systems-backend.onrender.com/files/${f.id}/download`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   ⬇️ Download
                 </a>{" "}
                 <button

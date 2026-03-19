@@ -24,3 +24,22 @@ export async function deleteFile(id) {
   const res = await axios.delete(`${API_URL}/files/${id}`, { headers });
   return res.data;
 }
+
+export async function analyzeDxf(file) {
+  const headers = getAuthHeader();
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await axios.post(
+    `${API_URL}/analyze/dxf`,
+    formData,
+    {
+      headers: {
+        ...headers,
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return res.data;
+}
