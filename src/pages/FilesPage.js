@@ -40,65 +40,132 @@ export default function FilesPage() {
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: 50 }}>
-      <h1>📁 Files</h1>
+    <div style={{ maxWidth: 1000, margin: "40px auto", padding: 20 }}>
+      <h1 style={{ textAlign: "center", marginBottom: 30 }}>📁 Files</h1>
 
-      <form onSubmit={handleUpload} style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          value={projectId}
-          placeholder="Project ID"
-          onChange={(e) => setProjectId(e.target.value)}
-          style={{ padding: 8, marginRight: 8 }}
-          required
-        />
-        <input
-          type="file"
-          onChange={(e) => setSelectedFile(e.target.files[0])}
-          style={{ marginRight: 8 }}
-          required
-        />
-        <button type="submit" style={{ padding: 8 }}>Upload</button>
-      </form>
+      <div style={cardStyle}>
+        <h2>Upload Project Files</h2>
+        <p style={sectionText}>
+          Upload files and assign them to a project.
+        </p>
 
-      <DxfUpload />
+        <form onSubmit={handleUpload} style={{ marginTop: 15 }}>
+          <input
+            type="text"
+            value={projectId}
+            placeholder="Project ID"
+            onChange={(e) => setProjectId(e.target.value)}
+            style={inputStyle}
+            required
+          />
 
-      {loading ? (
-        <p>Loading files...</p>
-      ) : files.length === 0 ? (
-        <p>No files yet</p>
-      ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {files.map((f) => (
-            <li key={f.id} style={{ marginBottom: 10 }}>
-              <strong>{f.filename}</strong> ({f.project_name || "No project"})
+          <input
+            type="file"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+            style={inputStyle}
+            required
+          />
+
+          <button type="submit" style={buttonStyle}>
+            Upload File
+          </button>
+        </form>
+      </div>
+
+      <div style={cardStyle}>
+        <h2>DXF Analysis</h2>
+        <p style={sectionText}>
+          Upload and analyze a DXF file to detect drawing geometry.
+        </p>
+        <DxfUpload />
+      </div>
+
+      <div style={cardStyle}>
+        <h2>Project Files</h2>
+
+        {loading ? (
+          <p>Loading files...</p>
+        ) : files.length === 0 ? (
+          <p>No files uploaded yet</p>
+        ) : (
+          files.map((f) => (
+            <div key={f.id} style={fileCard}>
+              <div>
+                <strong style={{ fontSize: "16px" }}>{f.filename}</strong>
+                <p style={{ margin: "6px 0 0", color: "#666" }}>
+                  Project: {f.project_name || "No project"}
+                </p>
+              </div>
+
               <div>
                 <a
                   href={`https://buildwise-systems-backend.onrender.com/files/${f.id}/download`}
                   target="_blank"
                   rel="noreferrer"
+                  style={actionLink}
                 >
-                  ⬇️ Download
-                </a>{" "}
-                <button
-                  onClick={() => handleDelete(f.id)}
-                  style={{
-                    marginLeft: 10,
-                    color: "white",
-                    background: "red",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    padding: "2px 8px",
-                  }}
-                >
+                  Download
+                </a>
+
+                <button onClick={() => handleDelete(f.id)} style={deleteButton}>
                   Delete
                 </button>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
+
+const cardStyle = {
+  background: "#ffffff",
+  padding: 24,
+  borderRadius: 14,
+  boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+  marginBottom: 25,
+};
+
+const sectionText = {
+  color: "#666",
+  marginTop: 6,
+  marginBottom: 16,
+};
+
+const inputStyle = {
+  padding: 10,
+  marginRight: 10,
+  marginBottom: 10,
+};
+
+const buttonStyle = {
+  padding: "10px 16px",
+  cursor: "pointer",
+  border: "none",
+  borderRadius: 8,
+};
+
+const fileCard = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: 14,
+  borderBottom: "1px solid #eee",
+};
+
+const actionLink = {
+  marginRight: 10,
+  textDecoration: "none",
+  color: "#007bff",
+  fontWeight: "500",
+};
+
+const deleteButton = {
+  background: "red",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  cursor: "pointer",
+  padding: "6px 10px",
+};
